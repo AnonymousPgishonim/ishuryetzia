@@ -58,30 +58,14 @@
   .dl-btn svg{width:20px;height:20px}
   .toast{font-size:14px;font-weight:600;color:#fff;opacity:0;transition:opacity .2s}
   .toast.show{opacity:.95}
-  .img-overlay{
-    position:fixed;inset:0;z-index:200;background:rgba(10,18,50,.96);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
-    padding:16px;direction:rtl;
-  }
-  .img-overlay p{margin:0;color:#fff;font-size:16px;font-weight:700;text-align:center}
-  .img-overlay img{max-width:100%;max-height:calc(100% - 130px);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
-  .img-overlay button{
-    height:46px;padding:0 26px;border:2px solid rgba(255,255,255,.7);border-radius:999px;background:transparent;
-    color:#fff;font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;
-  }
 
   /* ---------- הבמה: התמונה המשוחזרת ביחס מדויק (947x2048) ---------- */
-  /* הגודל נקבע ב-CSS (מוצג גם בלי JavaScript); fit() רק מדייק אחר כך */
   .stage{
     position:relative;
-    container-type:inline-size;
+    container-type:size;
     box-shadow:0 18px 50px rgba(0,0,0,.4);
     border-radius:1.5cqw;overflow:hidden;
-    display:block;
-    --avail-h:calc(100vh - 110px);
-    width:min(100%, calc(var(--avail-h) * 0.4624));
-    max-width:100%;
-    aspect-ratio:947 / 2048;
+    display:none;
   }
   .stage img{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none;max-width:100%}
 
@@ -316,12 +300,10 @@
     .design summary{padding:12px 10px;font-size:14px}
 
     .stage-wrap{
-      position:static;min-height:100vh;min-height:100dvh;
-      justify-content:flex-start;
-      padding:calc(4px + env(safe-area-inset-top,0px)) 0 calc(12px + env(safe-area-inset-bottom,0px));
+      position:fixed;inset:0;z-index:5;background:var(--ground);
+      padding:calc(10px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px));
       gap:10px;
     }
-    .stage{--avail-h:calc(100vh - 150px);--avail-h:calc(100dvh - 150px)}
     .toolbar{width:100%;justify-content:space-between;gap:8px;flex-wrap:wrap}
     .dl-btn{height:52px;padding:0 20px;font-size:17px;flex:1;justify-content:center}
     .dl-btn svg{width:22px;height:22px}
@@ -580,6 +562,7 @@
     if(w>W){ w=W; h=w/ar; }
     stage.style.width=w+'px';
     stage.style.height=h+'px';
+    stage.style.display='block';
   }
   new ResizeObserver(fit).observe(wrap);
   img.addEventListener('load',fit);
@@ -752,14 +735,6 @@
 
   /* ---------- הורדה: ציור האישור על קנבס ברזולוציה המלאה של התמונה ---------- */
   const LOCK_PATH='M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4V7z';
-  // roundRect חסר בדפדפני טלפון ישנים
-  if(!CanvasRenderingContext2D.prototype.roundRect){
-    CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){
-      const rr=Array.isArray(r)?r:[r,r,r,r]; const [tl,tr,br,bl]=[rr[0],rr[1]??rr[0],rr[2]??rr[0],rr[3]??rr[1]??rr[0]];
-      this.moveTo(x+tl,y); this.lineTo(x+w-tr,y); this.arcTo(x+w,y,x+w,y+tr,tr); this.lineTo(x+w,y+h-br); this.arcTo(x+w,y+h,x+w-br,y+h,br);
-      this.lineTo(x+bl,y+h); this.arcTo(x,y+h,x,y+h-bl,bl); this.lineTo(x,y+tl); this.arcTo(x,y,x+tl,y,tl); this.closePath(); return this;
-    };
-  }
   const fontName=()=>state.font==='system-ui'?'system-ui':`"${state.font}"`;
   async function renderImage(){
     const W=img.naturalWidth||947, H=img.naturalHeight||2048, cq=W/100;
@@ -812,61 +787,30 @@
   (async()=>{ try{ if(window.claude&&window.claude.use) downloadsNS=await window.claude.use('downloads'); }catch(e){} })();
 
   const toast=(msg)=>{ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove('show'),3500); };
-
-  // התמונה מוכנה מראש, כך שבלחיצה השיתוף בטלפון קורה מיד (בתוך "מחוות המשתמש")
-  let preBlob=null, preKey='', preTimer=null;
-  const stateKey=()=>JSON.stringify(state);
-  function prerender(){
-    clearTimeout(preTimer);
-    preTimer=setTimeout(async()=>{
-      if(!img.complete||!img.naturalWidth) return;      // התמונה עוד לא נטענה, ננסה שוב אחרי load
-      const k=stateKey();
-      try{ const b=await renderImage(); if(stateKey()===k){ preBlob=b; preKey=k; } }catch(e){}
-    },250);
-  }
-  const origRender=render;
-  render=function(){ origRender(); prerender(); };
-  img.addEventListener('load',prerender);
-  prerender();
-
-  // מסלול אחרון שעובד בכל טלפון: מציגים את התמונה ולוחצים עליה לחיצה ארוכה
-  function showImageOverlay(blob){
-    const url=URL.createObjectURL(blob);
-    const ov=document.createElement('div'); ov.className='img-overlay';
-    ov.innerHTML='<p>לחיצה ארוכה על התמונה ואז "שמור תמונה" / "הורד תמונה"</p><img alt="אישור יציאה"><button type="button">סגור</button>';
-    ov.querySelector('img').src=url;
-    ov.querySelector('button').addEventListener('click',()=>{ ov.remove(); URL.revokeObjectURL(url); });
-    document.body.appendChild(ov);
-  }
-
   $('dl-btn').addEventListener('click',async()=>{
     const btn=$('dl-btn'); btn.disabled=true; $('dl-label').textContent='מכין תמונה...';
-    let blob=null;
     try{
-      blob=(preBlob&&preKey===stateKey())?preBlob:await renderImage();
+      const blob=await renderImage();
       const filename=`אישור יציאה ${fmtDate(state.date).replace(/\//g,'.')}.png`;
-      let done=false;
       if(downloadsNS){
-        try{ await downloadsNS.save({filename,data:blob}); toast('התמונה נשמרה'); done=true; }
-        catch(e){ if(e&&e.code==='declined'){ toast('ההורדה בוטלה'); done=true; } }
-      }
-      if(!done){
+        await downloadsNS.save({filename,data:blob});
+        toast('התמונה נשמרה');
+      } else {
         const file=new File([blob],filename,{type:'image/png'});
         if(navigator.canShare&&navigator.canShare({files:[file]})){
-          try{ await navigator.share({files:[file],title:'אישור יציאה'}); toast('התמונה נשלחה לשמירה'); done=true; }
-          catch(e){ if(e&&e.name==='AbortError'){ toast('השיתוף בוטל'); done=true; } }
-        }
-      }
-      if(!done){
-        const isTouch=matchMedia('(pointer:coarse)').matches;
-        if(isTouch){ showImageOverlay(blob); }
-        else {
+          await navigator.share({files:[file],title:'אישור יציאה'});
+          toast('התמונה נשלחה לשמירה');
+        } else {
           const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(()=>URL.revokeObjectURL(url),10000); toast('ההורדה התחילה');
+          setTimeout(()=>URL.revokeObjectURL(url),10000);
+          toast('ההורדה התחילה');
         }
       }
     }catch(e){
-      if(blob) showImageOverlay(blob); else toast('יצירת התמונה נכשלה, נסה שוב');
+      const code=e&&e.code;
+      if(code==='declined'||(e&&e.name==='AbortError')) toast('ההורדה בוטלה');
+      else if(code==='rate_limited') toast('חלון הורדה כבר פתוח');
+      else toast('ההורדה לא הצליחה, נסה שוב');
     }
     btn.disabled=false; $('dl-label').textContent='הורדה לגלריה';
   });
