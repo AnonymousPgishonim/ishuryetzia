@@ -1,0 +1,703 @@
+<title>אישור יציאה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@600;700;800&family=Heebo:wght@500;600;700;800&family=Rubik:wght@500;600;700;800&family=Open+Sans:wght@600;700;800&family=Arimo:wght@600;700&family=Noto+Sans+Hebrew:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ground:#1d2f7a;
+    --panel:#ffffff;
+    --ink:#1b2a5e;
+    --ink-soft:#4a557a;
+    --muted:#6b7280;
+    --line:#d6dcea;
+    --soft:#eef1f7;
+    --accent:#1f8f60;
+    --accent-dark:#177a51;
+    --text-color:#111827;
+    --text-font:'Rubik';
+    --text-weight:700;
+    --text-size:3.7;
+    --teacher-color:#7d8c8a;
+    --teacher-size:3.5;
+  }
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--ground);
+    font-family:'Rubik','Assistant','Heebo',system-ui,sans-serif;
+    color:var(--ink);
+  }
+  *{box-sizing:border-box}
+
+  .app{
+    direction:rtl;
+    display:grid;
+    grid-template-columns:340px 1fr;
+    height:100%;
+    gap:16px;
+    padding:16px;
+  }
+  .stage-wrap{
+    position:relative;
+    min-width:0;min-height:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  }
+  .toolbar{display:flex;align-items:center;justify-content:center;gap:12px;flex:none;min-height:48px}
+  .dl-btn{
+    height:48px;padding:0 22px;border:none;border-radius:999px;
+    background:#fff;color:var(--ink);
+    font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;gap:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+    transition:transform .08s,background .15s;
+  }
+  .dl-btn:hover{background:#eef1f7}
+  .dl-btn:active{transform:translateY(1px)}
+  .dl-btn:disabled{opacity:.7;cursor:progress}
+  .dl-btn:focus-visible{outline:3px solid rgba(255,255,255,.6);outline-offset:2px}
+  .dl-btn svg{width:20px;height:20px}
+  .toast{font-size:14px;font-weight:600;color:#fff;opacity:0;transition:opacity .2s}
+  .toast.show{opacity:.95}
+
+  /* ---------- הבמה: התמונה המשוחזרת ביחס מדויק (947x2048) ---------- */
+  .stage{
+    position:relative;
+    container-type:size;
+    box-shadow:0 18px 50px rgba(0,0,0,.4);
+    border-radius:1.5cqw;overflow:hidden;
+    display:none;
+  }
+  .stage img{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none;max-width:100%}
+
+  .field{
+    position:absolute;
+    color:var(--text-color);
+    font-family:var(--text-font),'Rubik','Assistant',system-ui,sans-serif;
+    font-weight:var(--text-weight);
+    font-size:calc(var(--text-size) * 1cqw);
+    letter-spacing:0;
+    line-height:1;
+    white-space:nowrap;
+    direction:rtl;
+    display:flex;align-items:center;justify-content:flex-start;
+    overflow:hidden;
+    height:3%;
+  }
+  /* שורה 1: תלמיד / כיתה */
+  #student{right:7.4%; top:27.4%;width:36%}
+  #class  {right:54.2%;top:27.4%;width:36%}
+  /* שורה 2: תאריך / שעה */
+  #date{right:7.3%; top:35.3%;width:36%;font-variant-numeric:tabular-nums}
+  #time{right:54.2%;top:35.3%;width:36%}
+  /* שורה 3: סיבה / מחזוריות */
+  #reason{right:7.4%; top:43.5%;width:36%}
+  #recur {right:54.2%;top:43.5%;width:36%}
+
+  /* אושר על ידי */
+  #teacher{
+    left:15%;width:70%;top:75.3%;height:2.4%;
+    justify-content:center;gap:.55cqw;
+    font-size:calc(var(--teacher-size) * 1cqw);font-weight:500;
+    color:var(--teacher-color);
+  }
+
+  /* טקסט הכפתור הירוק (הכפתור עצמו הוא חלק מהתמונה המשוחזרת) */
+  #bartext{
+    left:5.2%;width:89.6%;top:78.3%;height:4.85%;
+    justify-content:center;gap:1.6cqw;
+    color:#fff;font-weight:700;font-size:4.14cqw;
+  }
+  #bartext svg{width:3.4cqw;height:3.4cqw;flex:none}
+
+  /* שורת הסטטוס של הטלפון: השעה בצד שמאל למעלה */
+  #status{
+    left:9%;top:1.9%;height:2.4%;width:16%;
+    direction:ltr;justify-content:flex-start;
+    color:#fff;font-family:-apple-system,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+    font-weight:600;font-size:4.3cqw;letter-spacing:.07em;
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* סוללה בפינה הימנית העליונה (נמחקה מהתמונה ומצוירת כאן לפי האחוז) */
+  .battery{
+    position:absolute;left:86.15%;top:2.25%;width:6.45%;height:1.66%;
+    --pct:86;
+  }
+  .battery-body{
+    position:absolute;inset:0;border-radius:.85cqw;overflow:hidden;
+    background:rgba(255,255,255,.38);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .battery-fill{position:absolute;left:0;top:0;bottom:0;width:calc(var(--pct) * 1%);background:#fff;border-radius:.85cqw}
+  .battery-num{
+    position:relative;color:#26375f;font-family:-apple-system,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+    font-weight:700;font-size:3cqw;line-height:1;letter-spacing:-.02em;
+  }
+  .battery.low .battery-num{color:#fff}
+  .battery-nub{
+    position:absolute;left:calc(100% + .22cqw);top:30%;height:40%;width:.32cqw;
+    background:rgba(255,255,255,.45);border-radius:0 .2cqw .2cqw 0;
+  }
+
+  /* ---------- פאנל העריכה ---------- */
+  .panel{
+    background:var(--panel);
+    border-radius:18px;
+    box-shadow:0 18px 50px rgba(0,0,0,.35);
+    display:flex;flex-direction:column;
+    min-height:0;overflow:auto;
+  }
+  .panel-head{
+    padding:18px 20px 14px;
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:10px;
+  }
+  .panel-head .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);flex:none}
+  .panel-head h1{font-size:20px;font-weight:700;margin:0;color:var(--ink)}
+  .panel-head p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+  .panel-body{padding:16px 20px;display:flex;flex-direction:column;gap:14px;flex:1}
+
+  .f{display:flex;flex-direction:column;gap:6px}
+  .f label{font-size:14px;font-weight:600;color:var(--ink-soft)}
+  .f input,.f select{
+    width:100%;height:46px;padding:0 14px;
+    border:1.5px solid var(--line);border-radius:12px;
+    background:var(--soft);
+    font-family:inherit;font-size:17px;font-weight:600;color:var(--ink);
+    transition:border-color .15s,background .15s,box-shadow .15s;
+  }
+  .f select{cursor:pointer;font-size:16px}
+  .f input::placeholder{color:#9aa3b8;font-weight:500}
+  .f input:hover,.f select:hover{border-color:#b9c2d8}
+  .f input:focus,.f select:focus{
+    outline:none;background:#fff;border-color:var(--accent);
+    box-shadow:0 0 0 4px rgba(31,143,96,.18);
+  }
+  .f input[type=date],.f input[type=time]{direction:ltr;text-align:right;font-variant-numeric:tabular-nums}
+  .f input[type=color]{padding:4px;cursor:pointer}
+  .f input[type=range]{height:auto;padding:0;background:none;border:none;accent-color:var(--accent)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .f input[readonly]{color:var(--ink-soft);cursor:default}
+  .f input[readonly]:focus{border-color:var(--line);box-shadow:none;background:var(--soft)}
+
+  /* לוח שנה: נפתח בלחיצה על שדה התאריך */
+  .cal{direction:rtl}
+  .cal-trigger{
+    list-style:none;cursor:pointer;user-select:none;
+    height:46px;padding:0 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--soft);
+    display:flex;align-items:center;justify-content:space-between;
+    font-size:17px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;
+    transition:border-color .15s,background .15s,box-shadow .15s;
+  }
+  .cal-trigger::-webkit-details-marker{display:none}
+  .cal-trigger:hover{border-color:#b9c2d8}
+  .cal-trigger:focus-visible{outline:none;background:#fff;border-color:var(--accent);box-shadow:0 0 0 4px rgba(31,143,96,.18)}
+  .cal-trigger .chev{font-size:22px;line-height:1;color:var(--muted);transition:transform .15s}
+  .cal[open] .cal-trigger{border-color:var(--accent);background:#fff}
+  .cal[open] .cal-trigger .chev{transform:rotate(90deg)}
+  .cal-pop{margin-top:6px;border:1.5px solid var(--line);border-radius:12px;background:var(--soft);padding:10px}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .cal-title{font-size:15px;font-weight:700;color:var(--ink)}
+  .cal-nav{
+    width:34px;height:34px;border:none;border-radius:9px;background:#fff;color:var(--ink);
+    font-size:22px;line-height:1;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08);
+  }
+  .cal-nav:hover{background:#e3e8f2}
+  .cal-nav:focus-visible,.cal-day:focus-visible{outline:3px solid rgba(31,143,96,.4);outline-offset:1px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+  .cal-dow{text-align:center;font-size:11px;font-weight:700;color:var(--muted);padding:2px 0 4px}
+  .cal-day{
+    height:34px;border:none;border-radius:8px;background:#fff;color:var(--ink);
+    font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    font-variant-numeric:tabular-nums;
+  }
+  .cal-day:hover{background:#e3e8f2}
+  .cal-day.empty{background:transparent;cursor:default}
+  .cal-day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+  .cal-day.sel,.cal-day.sel:hover{background:var(--accent);color:#fff}
+  .cal-day.sat{color:#8b93a8}
+  .design{margin-top:4px;border-top:1px solid var(--line);padding-top:10px}
+  .design summary{
+    list-style:none;cursor:pointer;user-select:none;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 10px;border-radius:10px;
+    font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--muted);
+  }
+  .design summary::-webkit-details-marker{display:none}
+  .design summary:hover{background:var(--soft);color:var(--ink)}
+  .design summary:focus-visible{outline:3px solid rgba(31,143,96,.35)}
+  .design .chev{font-size:20px;line-height:1;transition:transform .15s}
+  .design[open] .chev{transform:rotate(90deg)}
+  .design-body{display:flex;flex-direction:column;gap:14px;padding-top:10px}
+
+  .actions{display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:6px}
+  .btn{
+    height:48px;border:none;border-radius:12px;
+    font-family:inherit;font-size:16px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    transition:transform .08s,background .15s,box-shadow .15s;
+  }
+  .btn:focus-visible{outline:3px solid rgba(31,143,96,.45);outline-offset:2px}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(31,143,96,.35)}
+  .btn-primary:hover{background:var(--accent-dark)}
+  .btn-ghost{background:var(--soft);color:var(--ink)}
+  .btn-ghost:hover{background:#e3e8f2}
+  .btn svg{width:18px;height:18px}
+  .hint{font-size:12.5px;color:var(--muted);line-height:1.5;margin:0}
+
+  @media (max-width:820px){
+    html,body{height:auto}
+    .app{grid-template-columns:1fr;height:auto;min-height:100%}
+    .stage-wrap{height:72vh}
+    .panel{overflow:visible}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .btn,.f input,.f select{transition:none}
+  }
+</style>
+
+<div class="app">
+
+  <aside class="panel" aria-label="עריכת פרטי האישור">
+    <div class="panel-head">
+      <span class="dot" aria-hidden="true"></span>
+      <div>
+        <h1>פרטי האישור</h1>
+        <p>כל שינוי מתעדכן מיד על האישור</p>
+      </div>
+    </div>
+
+    <div class="panel-body">
+      <div class="f">
+        <label for="in-student">שם התלמיד</label>
+        <input id="in-student" type="text" placeholder="הכנס שם כאן" autocomplete="off">
+      </div>
+      <div class="f">
+        <label for="in-class">כיתה</label>
+        <select id="in-class">
+          <option value="יא1">יא1</option>
+          <option value="יא2">יא2</option>
+          <option value="יא3">יא3</option>
+          <option value="יא4">יא4</option>
+          <option value="יא5">יא5</option>
+          <option value="יא6">יא6</option>
+          <option value="יא7">יא7</option>
+          <option value="יא8">יא8</option>
+        </select>
+      </div>
+      <div class="f">
+        <label id="cal-label">תאריך</label>
+        <details class="cal" id="cal-details">
+          <summary class="cal-trigger" aria-labelledby="cal-label"><span id="cal-picked"></span><span class="chev" aria-hidden="true">›</span></summary>
+          <div class="cal-pop">
+            <div class="cal-head">
+              <button type="button" class="cal-nav" id="cal-prev" aria-label="חודש קודם">‹</button>
+              <span class="cal-title" id="cal-title" aria-live="polite"></span>
+              <button type="button" class="cal-nav" id="cal-next" aria-label="חודש הבא">›</button>
+            </div>
+            <div class="cal-grid" id="cal-grid" role="grid"></div>
+          </div>
+        </details>
+      </div>
+      <div class="f">
+        <label for="in-lesson">טווח שיעורים (בחירה מהירה, שעתיים לפחות)</label>
+        <select id="in-lesson"></select>
+      </div>
+      <div class="two">
+        <div class="f">
+          <label for="in-start">משעה</label>
+          <select id="in-start"></select>
+        </div>
+        <div class="f">
+          <label for="in-end">עד שעה</label>
+          <select id="in-end"></select>
+        </div>
+      </div>
+      <div class="two">
+        <div class="f">
+          <label for="in-reason">סיבה</label>
+          <input id="in-reason" type="text" placeholder="חלון יציאה" autocomplete="off">
+        </div>
+        <div class="f">
+          <label for="in-recur">מחזוריות</label>
+          <input id="in-recur" type="text" placeholder="חד פעמי" autocomplete="off">
+        </div>
+      </div>
+      <div class="f">
+        <label for="in-teacher">אושר על ידי</label>
+        <input id="in-teacher" type="text" placeholder="שם המורה" autocomplete="off">
+      </div>
+      <div class="f">
+        <label for="in-status">שעה בטלפון</label>
+        <input id="in-status" type="text" readonly aria-readonly="true" dir="ltr" style="text-align:right" tabindex="-1">
+      </div>
+
+      <details class="design" id="design">
+      <summary>עיצוב הטקסט <span class="chev" aria-hidden="true">›</span></summary>
+      <div class="design-body">
+      <div class="f">
+        <label for="in-font">פונט</label>
+        <select id="in-font">
+          <option value="Rubik">Rubik (ברירת מחדל)</option>
+          <option value="Assistant">Assistant</option>
+          <option value="Heebo">Heebo</option>
+          <option value="Open Sans">Open Sans</option>
+          <option value="Arimo">Arimo</option>
+          <option value="Noto Sans Hebrew">Noto Sans Hebrew</option>
+          <option value="system-ui">פונט המערכת</option>
+        </select>
+      </div>
+      <div class="two">
+        <div class="f">
+          <label for="in-weight">עובי</label>
+          <select id="in-weight">
+            <option value="600">בינוני</option>
+            <option value="700">מודגש</option>
+            <option value="800">מודגש מאוד</option>
+          </select>
+        </div>
+        <div class="f">
+          <label for="in-color">צבע</label>
+          <input id="in-color" type="color" value="#111827">
+        </div>
+      </div>
+      <div class="f">
+        <label for="in-size">גודל</label>
+        <input id="in-size" type="range" min="3" max="4.8" step="0.05" value="3.7">
+      </div>
+      </div>
+      </details>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="new-approval" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          אישור חדש
+        </button>
+        <button class="btn btn-ghost" id="reset" type="button">איפוס לברירת מחדל</button>
+        <p class="hint">"אישור חדש" מאפס את השם, מעדכן את התאריך והשעה לפי ישראל ומגריל אחוז סוללה חדש.</p>
+      </div>
+    </div>
+  </aside>
+
+  <main class="stage-wrap" id="wrap">
+    <div class="toolbar" id="toolbar">
+      <button type="button" class="dl-btn" id="dl-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg>
+        <span id="dl-label">הורדה לגלריה</span>
+      </button>
+      <span class="toast" id="toast" role="status" aria-live="polite"></span>
+    </div>
+    <div class="stage" id="stage">
+      <img id="bg" src="bg-fixed.png" alt="">
+
+      <div class="field" id="status">11:27</div>
+      <div class="battery" id="battery" aria-hidden="true">
+        <div class="battery-body"><div class="battery-fill"></div><span class="battery-num" id="battery-num">86</span></div>
+        <div class="battery-nub"></div>
+      </div>
+      <div class="field" id="student">הכנס שם כאן</div>
+      <div class="field" id="class">יא3</div>
+      <div class="field" id="date">09/09/2026</div>
+      <div class="field" id="time">11:25 - 12:00</div>
+      <div class="field" id="reason">חלון יציאה</div>
+      <div class="field" id="recur">חד פעמי</div>
+      <div class="field" id="teacher"><span>אושר על ידי:</span><span id="teacherName">רות בנג'ו</span></div>
+      <div class="field" id="bartext">
+        <svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4V7z"/></svg>
+        <span>עדכון יציאה מבית הספר</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  document.documentElement.setAttribute('dir','rtl');
+  document.documentElement.setAttribute('lang','he');
+
+  const root=document.documentElement.style;
+  const wrap=document.getElementById('wrap');
+  const stage=document.getElementById('stage');
+  const img=document.getElementById('bg');
+  const $=id=>document.getElementById(id);
+
+  // מצב כיול מקומי: ?orig=1 מציג את התמונה המקורית כדי להשוות יישור
+  if(/[?&]orig=1/.test(location.search)) img.src='bg.jpg';
+
+  /* ---------- זמן ישראל ---------- */
+  const IL=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jerusalem',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});
+  const nowIL=()=>{ const p={}; IL.formatToParts(new Date()).forEach(x=>p[x.type]=x.value); return {y:+p.year,m:+p.month,d:+p.day,hh:+p.hour%24,mm:p.minute}; };
+  const todayIL=()=>{ const n=nowIL(); return `${n.y}-${String(n.m).padStart(2,'0')}-${String(n.d).padStart(2,'0')}`; };
+  const clockIL=()=>{ const n=nowIL(); return `${n.hh}:${n.mm}`; };
+  const randomBattery=()=>Math.round(12+Math.random()*88);
+
+  const DEFAULTS={
+    student:'הכנס שם כאן',cls:'יא3',date:todayIL(),start:'11:30',end:'14:10',teacher:"רות בנג'ו",
+    status:clockIL(),battery:86,reason:'חלון יציאה',recur:'חד פעמי',
+    font:'Rubik',weight:'700',color:'#111827',size:'3.7'
+  };
+  let state={...DEFAULTS};
+
+  const store={
+    get(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+    set(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+  };
+
+  function fit(){
+    if(!img.naturalWidth) return;
+    const ar=img.naturalWidth/img.naturalHeight;
+    const W=wrap.clientWidth, H=wrap.clientHeight-$('toolbar').offsetHeight-12;
+    let h=H, w=h*ar;
+    if(w>W){ w=W; h=w/ar; }
+    stage.style.width=w+'px';
+    stage.style.height=h+'px';
+    stage.style.display='block';
+  }
+  new ResizeObserver(fit).observe(wrap);
+  img.addEventListener('load',fit);
+  if(img.complete) fit();
+
+  const pad=n=>String(n).padStart(2,'0');
+
+  /* ---------- מערכת השעות: שיעורים והפסקות ---------- */
+  const LESSONS=[
+    [1,'8:00','8:45'],[2,'8:45','9:30'],[3,'9:45','10:30'],[4,'10:30','11:15'],
+    [5,'11:30','12:15'],[6,'12:15','13:00'],[7,'13:25','14:10']
+  ];
+  const MIN_SPAN=120;   // אישור דורש לפחות שעתיים רצופות
+  const TIMES=[...new Set([...LESSONS.flatMap(l=>[l[1],l[2]]),'14:55','15:40'])];
+  const toMin=t=>{const [h,m]=t.split(':').map(Number);return h*60+m;};
+  // טווחי שיעורים של שעתיים לפחות (שלושה שיעורים ומעלה): 1-3, 1-4, ... 5-7
+  const RANGES=[];
+  for(let i=0;i+2<LESSONS.length;i++){
+    RANGES.push({from:LESSONS[i],to:LESSONS[i+2],start:LESSONS[i][1],end:LESSONS[i+2][2]});
+  }
+  const fill=(sel,items)=>{ sel.innerHTML=''; items.forEach(([v,label])=>{ const o=document.createElement('option'); o.value=v; o.textContent=label; sel.appendChild(o); }); };
+  fill($('in-lesson'),[['',"בחר טווח שיעורים..."],...RANGES.map(r=>[`${r.start}|${r.end}`,`שיעור ${r.from[0]} - שיעור ${r.to[0]}  ·  ${r.start} - ${r.end}`])]);
+  fill($('in-start'),TIMES.map(t=>[t,t]));
+  fill($('in-end'),TIMES.map(t=>[t,t]));
+  const ensureOption=(sel,v)=>{ if(v && ![...sel.options].some(o=>o.value===v)){ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); } };
+  const rangeNow=()=>{
+    const d=new Date(), m=d.getHours()*60+d.getMinutes();
+    const i=Math.max(0,LESSONS.findIndex(l=>m<toMin(l[2])));
+    return RANGES.find(r=>r.from===LESSONS[i])||RANGES[RANGES.length-1];
+  };
+  const fmtDate=iso=>{ const [y,m,d]=iso.split('-'); return y&&m&&d?`${d}/${m}/${y}`:iso; };
+
+  /* ---------- לוח שנה ---------- */
+  const MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const DOW=['א','ב','ג','ד','ה','ו','ש'];
+  let calView=null;   // {y,m} החודש המוצג
+  function renderCal(){
+    const [sy,sm]=state.date.split('-').map(Number);
+    if(!calView) calView={y:sy,m:sm};
+    const t=nowIL();
+    $('cal-title').textContent=`${MONTHS[calView.m-1]} ${calView.y}`;
+    const grid=$('cal-grid'); grid.innerHTML='';
+    DOW.forEach(d=>{ const e=document.createElement('div'); e.className='cal-dow'; e.textContent=d; grid.appendChild(e); });
+    const first=new Date(calView.y,calView.m-1,1).getDay();
+    const days=new Date(calView.y,calView.m,0).getDate();
+    for(let i=0;i<first;i++){ const e=document.createElement('div'); e.className='cal-day empty'; grid.appendChild(e); }
+    for(let d=1;d<=days;d++){
+      const b=document.createElement('button'); b.type='button'; b.className='cal-day'; b.textContent=d;
+      const iso=`${calView.y}-${pad(calView.m)}-${pad(d)}`;
+      if((first+d-1)%7===6) b.classList.add('sat');
+      if(calView.y===t.y&&calView.m===t.m&&d===t.d) b.classList.add('today');
+      if(iso===state.date) b.classList.add('sel');
+      b.setAttribute('aria-label',`${d} ${MONTHS[calView.m-1]} ${calView.y}`);
+      b.addEventListener('click',()=>{ state.date=iso; $('cal-details').open=false; render(); });
+      grid.appendChild(b);
+    }
+    $('cal-picked').textContent=fmtDate(state.date);
+  }
+  $('cal-prev').addEventListener('click',()=>{ calView.m--; if(calView.m<1){calView.m=12;calView.y--;} renderCal(); });
+  $('cal-next').addEventListener('click',()=>{ calView.m++; if(calView.m>12){calView.m=1;calView.y++;} renderCal(); });
+  // סגירת לוח השנה בלחיצה מחוץ לו
+  document.addEventListener('click',e=>{ const d=$('cal-details'); if(d.open && !d.contains(e.target)) d.open=false; });
+
+  function render(){
+    $('student').textContent=state.student||DEFAULTS.student;
+    $('class').textContent=state.cls;
+    $('date').textContent=fmtDate(state.date);
+    $('time').textContent=`${state.start} - ${state.end}`;
+    $('teacherName').textContent=state.teacher;
+    state.status=clockIL();
+    $('status').textContent=state.status;
+    const bat=$('battery'); bat.style.setProperty('--pct',state.battery); bat.classList.toggle('low',state.battery<45);
+    $('battery-num').textContent=state.battery;
+    $('reason').textContent=state.reason;
+    $('recur').textContent=state.recur;
+
+    root.setProperty('--text-color',state.color||DEFAULTS.color);
+    root.setProperty('--text-font',state.font==='system-ui'?'system-ui':`'${state.font}'`);
+    root.setProperty('--text-weight',state.weight);
+    root.setProperty('--text-size',state.size);
+
+    $('in-student').value=state.student===DEFAULTS.student?'':state.student;
+    ensureOption($('in-class'),state.cls); $('in-class').value=state.cls;
+    renderCal();
+    ensureOption($('in-start'),state.start); ensureOption($('in-end'),state.end);
+    $('in-start').value=state.start;
+    $('in-end').value=state.end;
+    const match=RANGES.find(r=>r.start===state.start&&r.end===state.end);
+    $('in-lesson').value=match?`${match.start}|${match.end}`:'';
+    $('in-teacher').value=state.teacher;
+    $('in-status').value=state.status;
+    $('in-reason').value=state.reason;
+    $('in-recur').value=state.recur;
+    $('in-font').value=state.font;
+    $('in-weight').value=state.weight;
+    $('in-color').value=state.color||DEFAULTS.color;
+    $('in-size').value=state.size;
+    store.set('approval',JSON.stringify(state));
+  }
+
+  function load(){
+    try{
+      const s=JSON.parse(store.get('approval')||'null');
+      if(s){
+        if(s.styleVersion!==3){ delete s.font; delete s.weight; delete s.color; delete s.size; }
+        if(s.scheduleVersion!==2){ delete s.start; delete s.end; }
+        state={...DEFAULTS,...s};
+      }
+    }catch(e){}
+    state.styleVersion=3; state.scheduleVersion=2;
+    if(typeof state.battery!=='number') state.battery=randomBattery();
+    render();
+  }
+  load();
+  // השעה בטלפון עוקבת אחרי השעה בישראל
+  setInterval(()=>{ if($('status').textContent!==clockIL()) render(); },10000);
+
+  const bind=(id,key,transform)=>{
+    $(id).addEventListener('input',e=>{
+      const v=transform?transform(e.target.value):e.target.value;
+      if(v!==null){ state[key]=v; render(); }
+    });
+  };
+  bind('in-student','student',v=>v.trim()||DEFAULTS.student);
+  $('in-class').addEventListener('change',e=>{state.cls=e.target.value;render();});
+  $('in-lesson').addEventListener('change',e=>{
+    if(!e.target.value) return;
+    const [a,b]=e.target.value.split('|'); state.start=a; state.end=b; render();
+  });
+  // בחירה חופשית: שומרת על הפרש של שעתיים לפחות בין ההתחלה לסיום
+  $('in-start').addEventListener('change',e=>{
+    state.start=e.target.value;
+    if(toMin(state.end)-toMin(state.start)<MIN_SPAN){
+      const nx=TIMES.find(t=>toMin(t)-toMin(state.start)>=MIN_SPAN);
+      if(nx) state.end=nx; else { state.end=TIMES[TIMES.length-1]; state.start=[...TIMES].reverse().find(t=>toMin(state.end)-toMin(t)>=MIN_SPAN); }
+    }
+    render();
+  });
+  $('in-end').addEventListener('change',e=>{
+    state.end=e.target.value;
+    if(toMin(state.end)-toMin(state.start)<MIN_SPAN){
+      const pv=[...TIMES].reverse().find(t=>toMin(state.end)-toMin(t)>=MIN_SPAN);
+      if(pv) state.start=pv; else { state.start=TIMES[0]; state.end=TIMES.find(t=>toMin(t)-toMin(state.start)>=MIN_SPAN); }
+    }
+    render();
+  });
+  bind('in-teacher','teacher');
+  bind('in-reason','reason');
+  bind('in-recur','recur');
+  bind('in-font','font');
+  bind('in-weight','weight');
+  bind('in-color','color');
+  bind('in-size','size');
+  $('in-font').addEventListener('change',e=>{state.font=e.target.value;render();});
+  $('in-weight').addEventListener('change',e=>{state.weight=e.target.value;render();});
+
+  $('new-approval').addEventListener('click',()=>{
+    state.student=DEFAULTS.student;
+    state.date=todayIL(); calView=null;
+    const r=rangeNow(); state.start=r.start; state.end=r.end;
+    state.status=clockIL();
+    state.battery=randomBattery();
+    render();
+    $('in-student').focus();
+  });
+  $('reset').addEventListener('click',()=>{ state={...DEFAULTS,date:todayIL(),status:clockIL(),battery:randomBattery(),styleVersion:3,scheduleVersion:2}; calView=null; render(); });
+
+  /* ---------- הורדה: ציור האישור על קנבס ברזולוציה המלאה של התמונה ---------- */
+  const LOCK_PATH='M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-7-2a2 2 0 0 1 4 0v2h-4V7z';
+  const fontName=()=>state.font==='system-ui'?'system-ui':`"${state.font}"`;
+  async function renderImage(){
+    const W=img.naturalWidth||947, H=img.naturalHeight||2048, cq=W/100;
+    const valFont=`${state.weight} ${(+state.size)*cq}px ${fontName()}, "Rubik", sans-serif`;
+    const teacherFont=`500 ${3.5*cq}px "Rubik", sans-serif`;
+    const barFont=`700 ${4.14*cq}px "Rubik", sans-serif`;
+    const uiFont=(px)=>`600 ${px}px -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif`;
+    try{ await Promise.all([document.fonts.load(valFont),document.fonts.load(teacherFont),document.fonts.load(barFont)]); }catch(e){}
+    const c=document.createElement('canvas'); c.width=W; c.height=H;
+    const ctx=c.getContext('2d');
+    ctx.drawImage(img,0,0,W,H);
+    // מציב טקסט כך שמרכז שורת הטקסט יושב על y, בדיוק כמו align-items:center ב-CSS
+    const text=(str,x,yCenter,{font,color,align='right',dir='rtl',ls=0})=>{
+      ctx.font=font; ctx.fillStyle=color; ctx.direction=dir; ctx.textAlign=align; ctx.textBaseline='alphabetic';
+      ctx.letterSpacing=ls+'px';
+      const m=ctx.measureText(str);
+      const asc=m.fontBoundingBoxAscent??m.actualBoundingBoxAscent, desc=m.fontBoundingBoxDescent??m.actualBoundingBoxDescent;
+      ctx.fillText(str,x,yCenter+(asc-desc)/2);
+      return m.width;
+    };
+    const R=p=>W*(1-p), Y=p=>H*p;
+    const vals={font:valFont,color:state.color||DEFAULTS.color};
+    text($('student').textContent,R(0.074),Y(0.274+0.015),vals);
+    text(state.cls,R(0.542),Y(0.274+0.015),vals);
+    text($('date').textContent,R(0.073),Y(0.353+0.015),vals);
+    text($('time').textContent,R(0.542),Y(0.353+0.015),vals);
+    text(state.reason,R(0.074),Y(0.435+0.015),vals);
+    text(state.recur,R(0.542),Y(0.435+0.015),vals);
+    text(`אושר על ידי: ${state.teacher}`,W/2,Y(0.753+0.012),{font:teacherFont,color:getComputedStyle(document.documentElement).getPropertyValue('--teacher-color').trim()||'#7d8c8a',align:'center'});
+    // כפתור ירוק: מנעול מימין, רווח, טקסט - הקבוצה ממורכזת
+    ctx.font=barFont; const barText='עדכון יציאה מבית הספר'; const tw=ctx.measureText(barText).width;
+    const lock=3.4*cq, gap=1.6*cq, total=lock+gap+tw, cx=W*(0.052+0.896/2), cy=Y(0.783+0.0485/2);
+    const lockLeft=cx+total/2-lock;
+    text(barText,lockLeft-gap,cy,{font:barFont,color:'#fff'});
+    ctx.save(); ctx.translate(lockLeft,cy-lock/2); ctx.scale(lock/24,lock/24); ctx.fillStyle='#fff'; ctx.fill(new Path2D(LOCK_PATH)); ctx.restore();
+    // שורת הסטטוס: שעה וסוללה
+    text(state.status,W*0.09,Y(0.019+0.012),{font:uiFont(4.3*cq),color:'#fff',align:'left',dir:'ltr',ls:0.07*4.3*cq});
+    const bx=W*0.8615, by=Y(0.0225), bw=W*0.0645, bh=Y(0.0166), br=0.85*cq;
+    ctx.fillStyle='rgba(255,255,255,.38)'; ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,br); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,br); ctx.clip();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.roundRect(bx,by,bw*state.battery/100,bh,br); ctx.fill(); ctx.restore();
+    ctx.letterSpacing='0px';
+    text(String(state.battery),bx+bw/2,by+bh/2,{font:`700 ${3*cq}px -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif`,color:state.battery<45?'#fff':'#26375f',align:'center',dir:'ltr',ls:-0.02*3*cq});
+    ctx.fillStyle='rgba(255,255,255,.45)'; ctx.beginPath(); ctx.roundRect(bx+bw+0.22*cq,by+bh*0.3,0.32*cq,bh*0.4,[0,0.2*cq,0.2*cq,0]); ctx.fill();
+    return new Promise(res=>c.toBlob(res,'image/png'));
+  }
+  window.__renderImage=renderImage;
+
+  let downloadsNS=null;
+  (async()=>{ try{ if(window.claude&&window.claude.use) downloadsNS=await window.claude.use('downloads'); }catch(e){} })();
+
+  const toast=(msg)=>{ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove('show'),3500); };
+  $('dl-btn').addEventListener('click',async()=>{
+    const btn=$('dl-btn'); btn.disabled=true; $('dl-label').textContent='מכין תמונה...';
+    try{
+      const blob=await renderImage();
+      const filename=`אישור יציאה ${fmtDate(state.date).replace(/\//g,'.')}.png`;
+      if(downloadsNS){
+        await downloadsNS.save({filename,data:blob});
+        toast('התמונה נשמרה');
+      } else {
+        const file=new File([blob],filename,{type:'image/png'});
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title:'אישור יציאה'});
+          toast('התמונה נשלחה לשמירה');
+        } else {
+          const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(()=>URL.revokeObjectURL(url),10000);
+          toast('ההורדה התחילה');
+        }
+      }
+    }catch(e){
+      const code=e&&e.code;
+      if(code==='declined'||(e&&e.name==='AbortError')) toast('ההורדה בוטלה');
+      else if(code==='rate_limited') toast('חלון הורדה כבר פתוח');
+      else toast('ההורדה לא הצליחה, נסה שוב');
+    }
+    btn.disabled=false; $('dl-label').textContent='הורדה לגלריה';
+  });
+})();
+</script>
